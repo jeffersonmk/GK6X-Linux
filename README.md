@@ -6,6 +6,10 @@ macros and the original commands still work.
 
 Fork of [pixeltris/GK6X](https://github.com/pixeltris/GK6X) (MIT license, archived upstream).
 
+![GK6X lighting control page](docs/screenshot.png)
+
+*Control page (`gk6x ui`) on a SK61S RGB: the keys show the colors the keyboard is receiving in real time; click or drag to paint keys.*
+
 ## Install
 
 1. Install the .NET SDK and git (Arch/CachyOS: `sudo pacman -S dotnet-sdk git`, Fedora: `sudo dnf install dotnet-sdk-8.0 git`, Ubuntu: `sudo apt install dotnet-sdk-8.0 git`).

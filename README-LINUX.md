@@ -10,6 +10,10 @@ This branch turns GK6X into a native Linux program:
 
 Supported: the same keyboards as upstream (GK61, GK64, GK68, GK84, GK87, SK61, ... USB id `1ea7:0907`).
 
+![GK6X lighting control page](docs/screenshot.png)
+
+*Control page (`gk6x ui`) on a SK61S RGB: the keys show the colors the keyboard is receiving in real time; click or drag to paint keys.*
+
 > **Status of realtime lighting:** the driver-layer protocol (`0x1A` frames) was reverse engineered by the upstream author but
 > never implemented in the open source tool. It is implemented here and **verified on a SK61S RGB** (colors, rainbow,
 > reactive effect and normal typing all work). Other models should behave the same; run `gk6x probe` to check yours.
