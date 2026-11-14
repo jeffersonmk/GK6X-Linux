@@ -69,6 +69,8 @@ echo "==> Service, launcher and icon"
 mkdir -p "$HOME/.config/systemd/user" "$HOME/.local/share/applications" "$HOME/.local/share/icons/hicolor/scalable/apps"
 install -m644 "$REPO/linux/gk6x.service" "$HOME/.config/systemd/user/gk6x.service"
 install -m644 "$REPO/linux/gk6x.desktop" "$HOME/.local/share/applications/gk6x.desktop"
+# menu launchers don't always have ~/.local/bin in PATH
+sed -i "s|^Exec=.*|Exec=$BIN/gk6x ui|" "$HOME/.local/share/applications/gk6x.desktop"
 # Use the Papirus keyboard icon when the icon theme has it, otherwise the bundled gk6x.svg
 if find /usr/share/icons "$HOME/.local/share/icons" -name 'system-keyboard-mx.svg' 2>/dev/null | grep . >/dev/null; then
   sed -i 's|^Icon=.*|Icon=system-keyboard-mx|' "$HOME/.local/share/applications/gk6x.desktop"

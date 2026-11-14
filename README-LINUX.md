@@ -48,10 +48,12 @@ The page has a theme picker (top right): Midnight, Neon, Carbon, Aurora, Clean l
 5. Start the service and open the control page:
    ```sh
    systemctl --user start gk6x      # or just: gk6x daemon
-   gk6x ui                          # http://127.0.0.1:6465
+   gk6x ui                          # opens the control page in its own window (http://127.0.0.1:6465)
    ```
 
 ## Using it
+
+`gk6x ui` (and the "GK6X Lighting" menu entry) opens the page as a standalone app window using a Chromium-based browser (Brave, Chrome, Chromium, Vivaldi, Edge...), with no tabs or address bar. It starts the service if needed. Use `gk6x ui --tab` for a normal browser tab, or set `GK6X_BROWSER=/path/to/browser` to pick the browser. Without a Chromium-based browser it falls back to `xdg-open`.
 
 ```sh
 gk6x color ff0000                    # solid red

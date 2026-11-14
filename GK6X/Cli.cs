@@ -106,7 +106,7 @@ Change the lighting while the service is running (instant):
   gk6x clear                            remove all painted keys
   gk6x off                              all lights off
   gk6x status
-  gk6x ui                               open the control page in the browser
+  gk6x ui [--tab]                       open the control page in its own window (--tab: normal browser tab)
   gk6x stop                             stop the service (keyboard returns to its own layer)
 
 Diagnostics:
@@ -424,6 +424,124 @@ Other (original) commands: run 'gk6x' without arguments for the interactive prom
             return 0;
         }
 
+
+        // ------------------------------------------------------------------ desktop window
+
+        private static readonly string[] chromiumBrowsers =
+        {
+            "brave", "brave-browser", "helium-browser", "chromium", "chromium-browser", "google-chrome-stable", "google-chrome",
+            "vivaldi", "vivaldi-stable", "microsoft-edge-stable", "thorium-browser", "opera"
+        };
+
+        private static string FindOnPath(string name)
+        {
+            foreach (string dir in (Environment.GetEnvironmentVariable("PATH") ?? string.Empty).Split(':'))
+            {
+                if (dir.Length == 0) continue;
+                string path = Path.Combine(dir, name);
+                if (File.Exists(path)) return path;
+            }
+            return null;
+        }
+
+        private static string RunAndRead(string file, string arguments)
+        {
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo(file, arguments) { RedirectStandardOutput = true, UseShellExecute = false };
+                using (Process p = Process.Start(psi))
+                {
+                    string text = p.StandardOutput.ReadToEnd();
+                    p.WaitForExit(2000);
+                    return text.Trim();
+                }
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        /// <summary>Finds a Chromium based browser (they can show a page as a plain app window with --app=).</summary>
+        private static string FindAppBrowser()
+        {
+            string forced = Environment.GetEnvironmentVariable("GK6X_BROWSER");
+            if (!string.IsNullOrEmpty(forced))
+            {
+                return FindOnPath(forced) ?? (File.Exists(forced) ? forced : null);
+            }
+            // Prefer the user's default browser when it is Chromium based
+            string defaultDesktop = RunAndRead("xdg-settings", "get default-web-browser").ToLowerInvariant();
+            foreach (string name in chromiumBrowsers)
+            {
+                if (defaultDesktop.StartsWith(name) && FindOnPath(name) != null)
+                {
+                    return FindOnPath(name);
+                }
+            }
+            foreach (string name in chromiumBrowsers)
+            {
+                string path = FindOnPath(name);
+                if (path != null) return path;
+            }
+            return null;
+        }
+
+        private static bool IsServiceUp(string baseUrl)
+        {
+            try
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    client.Timeout = TimeSpan.FromSeconds(1);
+                    return client.GetAsync(baseUrl + "/api/state").Result.IsSuccessStatusCode;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>Opens the control page in its own desktop window (or a browser tab with --tab / no Chromium browser).</summary>
+        private static int OpenUi(string baseUrl, bool asTab)
+        {
+            if (!IsServiceUp(baseUrl))
+            {
+                // Start the user service if it is installed, then wait for it
+                try { Process.Start(new ProcessStartInfo("systemctl", "--user start gk6x.service") { UseShellExecute = false })?.WaitForExit(3000); } catch { }
+                for (int i = 0; i < 30 && !IsServiceUp(baseUrl); i++) Thread.Sleep(200);
+                if (!IsServiceUp(baseUrl))
+                {
+                    Console.Error.WriteLine("The lighting service is not running. Start it with 'gk6x daemon' or 'systemctl --user start gk6x'.");
+                    return 1;
+                }
+            }
+            string url = baseUrl + "/";
+            string browser = asTab ? null : FindAppBrowser();
+            if (browser == null)
+            {
+                Process.Start(new ProcessStartInfo("xdg-open", url) { UseShellExecute = false });
+                return 0;
+            }
+            // A separate profile keeps this window independent from the user's normal browser windows
+            string home = Environment.GetEnvironmentVariable("HOME") ?? Path.GetTempPath();
+            string config = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+            if (string.IsNullOrEmpty(config)) config = Path.Combine(home, ".config");
+            string profile = Path.Combine(config, "gk6x", "browser");
+            Directory.CreateDirectory(profile);
+            ProcessStartInfo psi = new ProcessStartInfo(browser) { UseShellExecute = false };
+            psi.ArgumentList.Add("--app=" + url);
+            psi.ArgumentList.Add("--user-data-dir=" + profile);
+            psi.ArgumentList.Add("--class=GK6X");
+            psi.ArgumentList.Add("--window-size=1220,860");
+            psi.ArgumentList.Add("--no-first-run");
+            psi.ArgumentList.Add("--no-default-browser-check");
+            psi.ArgumentList.Add("--disable-features=Translate");
+            Process.Start(psi);
+            return 0;
+        }
+
         // ------------------------------------------------------------------ client
 
         private static string BaseUrl(List<string> args)
@@ -445,8 +563,7 @@ Other (original) commands: run 'gk6x' without arguments for the interactive prom
                     Console.WriteLine(string.Join(Environment.NewLine, LightingEngine.EffectNames));
                     return 0;
                 case "ui":
-                    Process.Start(new ProcessStartInfo("xdg-open", baseUrl + "/") { UseShellExecute = false });
-                    return 0;
+                    return OpenUi(baseUrl, GetFlag(args, "tab"));
                 case "stop":
                     if (Request(baseUrl, "POST", "/api/shutdown", new Dictionary<string, object>()) == null)
                     {

@@ -30,7 +30,7 @@ gk6x color ff0000                  # solid color
 gk6x effect rainbow --speed 60     # static, rainbow, cycle, breathing, wave, gradient, reactive, ripple, custom, off
 gk6x key W 00ff00                  # paint one key ('off' removes it); gk6x clear removes all
 gk6x brightness 70
-gk6x ui                            # control page: http://127.0.0.1:6465
+gk6x ui                            # control page in its own window (also in the app menu); --tab = browser tab
 gk6x stop                          # keyboard goes back to its normal layer
 ```
 Key mapping and macros: run `gk6x` with no arguments (`map`, `unmap`, `findkeys`...); your files live in `~/.config/gk6x/UserData/`.

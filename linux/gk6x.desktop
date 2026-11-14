@@ -2,8 +2,9 @@
 Type=Application
 Name=GK6X Lighting
 Comment=Realtime RGB lighting and key mapping for GK6X keyboards
-Exec=sh -c "systemctl --user start gk6x.service 2>/dev/null; sleep 1; xdg-open http://127.0.0.1:6465/"
+Exec=gk6x ui
 Icon=gk6x
 Terminal=false
+StartupWMClass=GK6X
 Categories=Settings;HardwareSettings;
 Keywords=keyboard;rgb;lighting;gk6x;semitek;
