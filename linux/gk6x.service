@@ -1,6 +1,6 @@
 [Unit]
 Description=GK6X keyboard realtime lighting
-Documentation=https://github.com/pixeltris/GK6X
+Documentation=https://github.com/jeffersonmk/GK6X-Linux
 
 [Service]
 Type=simple

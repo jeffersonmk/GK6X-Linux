@@ -22,9 +22,8 @@ Supported: the same keyboards as upstream (GK61, GK64, GK68, GK84, GK87, SK61, .
    - Ubuntu / Debian: `sudo apt install dotnet-sdk-8.0 git`
 2. Get the code and install:
    ```sh
-   git clone https://github.com/pixeltris/GK6X.git   # or your fork
-   cd GK6X
-   git checkout linux-native
+   git clone https://github.com/jeffersonmk/GK6X-Linux.git
+   cd GK6X-Linux
    ./linux/install.sh            # add --autostart to start the lighting service at every login
    ```
    Run it as your normal user. It asks for your password **once**, only to install the udev rule
@@ -74,7 +73,7 @@ prompt (`map`, `unmap`, `findkeys`, `dumpkeys`...). Your files live in `~/.confi
 ## Update
 
 ```sh
-cd GK6X && git pull && ./linux/install.sh
+cd GK6X-Linux && git pull && ./linux/install.sh
 ```
 Your settings in `~/.config/gk6x` are kept.
 

@@ -4,12 +4,14 @@ This fork runs natively on Linux (.NET 8, no mono, no `sudo`) and adds **realtim
 instantly from the command line or from a web page with a live keyboard preview. Tested on a SK61S RGB; key mapping,
 macros and the original commands still work.
 
+Fork of [pixeltris/GK6X](https://github.com/pixeltris/GK6X) (MIT license, archived upstream).
+
 ## Install
 
 1. Install the .NET SDK and git (Arch/CachyOS: `sudo pacman -S dotnet-sdk git`, Fedora: `sudo dnf install dotnet-sdk-8.0 git`, Ubuntu: `sudo apt install dotnet-sdk-8.0 git`).
 2. Get the code and run the installer as your normal user (it asks for your password once, only for the udev rule):
    ```sh
-   git clone https://github.com/pixeltris/GK6X.git && cd GK6X && git checkout linux-native
+   git clone https://github.com/jeffersonmk/GK6X-Linux.git && cd GK6X-Linux
    ./linux/install.sh --autostart      # --autostart = start the lighting service at every login
    ```
 3. Make sure `~/.local/bin` is in your `PATH` (fish: `fish_add_path ~/.local/bin`) and replug the keyboard if it isn't detected.
@@ -30,7 +32,7 @@ Key mapping and macros: run `gk6x` with no arguments (`map`, `unmap`, `findkeys`
 ## Update
 
 ```sh
-cd GK6X && git pull && ./linux/install.sh --no-udev --autostart
+cd GK6X-Linux && git pull && ./linux/install.sh --no-udev --autostart
 systemctl --user start gk6x
 ```
 Your settings in `~/.config/gk6x` are kept.
