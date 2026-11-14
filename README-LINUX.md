@@ -114,9 +114,6 @@ Local control API (127.0.0.1 only, JSON): `GET /api/state`, `POST /api/settings`
 
 ## Developing
 
-Test scripts in `linux/` (watch the keyboard while they run): `demo-test.sh` (colors, rainbow, reactive, ~50 s) and
-`probe-variants.sh` (checks which frame variant lights your keyboard).
-
 ```sh
 cd GK6X && dotnet build -c Release     # output in ../Build
 cd ../Build
