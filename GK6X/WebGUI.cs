@@ -1,4 +1,4 @@
-﻿using MiniJSON;
+using MiniJSON;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -48,7 +48,7 @@ namespace GK6X
                 {
                     try
                     {
-                        Process.Start("open " + url);
+                        Process.Start(new ProcessStartInfo(Environment.OSVersion.Platform == PlatformID.Unix && !File.Exists("/usr/bin/open") ? "xdg-open" : "open", url) { UseShellExecute = false });
                     }
                     catch
                     {

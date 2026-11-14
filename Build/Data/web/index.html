@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GK6X Lighting</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #14151a; --panel: #1d1f27; --panel2: #262935; --line: #333747;
+    --text: #e6e8ef; --muted: #8a90a6; --accent: #7c5cff; --ok: #3ddc84; --bad: #ff5c6c;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.4 system-ui, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; align-items: center; gap: 14px; padding: 14px 22px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; letter-spacing: .2px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); flex: none; }
+  .dot.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .sub { color: var(--muted); font-size: 12.5px; }
+  .spacer { flex: 1; }
+  main { max-width: 1180px; margin: 0 auto; padding: 22px; display: grid; gap: 18px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+  .card h2 { margin: 0 0 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); font-weight: 600; }
+  #board-wrap { overflow-x: auto; padding: 6px 2px 2px; }
+  #board { position: relative; margin: 0 auto; user-select: none; touch-action: none; }
+  .key { position: absolute; border-radius: 6px; border: 1px solid rgba(255,255,255,.14);
+    display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600;
+    color: rgba(255,255,255,.88); text-shadow: 0 1px 2px rgba(0,0,0,.8); cursor: crosshair; overflow: hidden;
+    transition: background-color .08s linear; }
+  .key.painted { outline: 2px solid #fff8; outline-offset: -3px; }
+  .key:hover { border-color: #fff; }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+  .field { display: grid; gap: 6px; margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; }
+  .field label b { color: var(--text); font-weight: 600; }
+  .effects { display: flex; flex-wrap: wrap; gap: 8px; }
+  .effects button, .btn { background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 7px 13px; cursor: pointer; font: inherit; text-transform: capitalize; }
+  .effects button:hover, .btn:hover { border-color: var(--accent); }
+  .effects button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  input[type=color] { width: 100%; height: 38px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--panel2); padding: 3px; cursor: pointer; }
+  select { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px; font: inherit; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 7px; }
+  .swatch { width: 26px; height: 26px; border-radius: 7px; border: 1px solid #fff3; cursor: pointer; }
+  .swatch:hover { transform: scale(1.12); }
+  .hint { color: var(--muted); font-size: 12.5px; margin-top: 10px; }
+  .warn { background: #3a2a14; border: 1px solid #6b4a1a; color: #ffd493; padding: 10px 14px; border-radius: 10px; display: none; }
+  .stats { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<header>
+  <div class="dot" id="dot"></div>
+  <div>
+    <h1 id="model">GK6X Lighting</h1>
+    <div class="sub" id="submodel">connecting...</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="stats" id="stats"></div>
+</header>
+
+<main>
+  <div class="warn" id="warn"></div>
+
+  <section class="card">
+    <h2>Keyboard &mdash; click or drag over keys to paint them with the brush color</h2>
+    <div id="board-wrap"><div id="board"></div></div>
+    <div class="hint">Painted keys (white outline) stay on top of the effect. The key colors shown here are what the keyboard is receiving in real time.</div>
+  </section>
+
+  <div class="row">
+    <section class="card">
+      <h2>Effect</h2>
+      <div class="effects" id="effects"></div>
+      <div class="hint" id="effect-hint"></div>
+    </section>
+
+    <section class="card">
+      <h2>Colors</h2>
+      <div class="field">
+        <label>Brush / primary color <b id="c1label"></b></label>
+        <input type="color" id="color1">
+      </div>
+      <div class="field">
+        <label>Secondary color <b id="c2label"></b></label>
+        <input type="color" id="color2">
+      </div>
+      <div class="swatches" id="swatches"></div>
+    </section>
+
+    <section class="card">
+      <h2>Motion</h2>
+      <div class="field">
+        <label>Brightness <b id="brightnessLabel"></b></label>
+        <input type="range" id="brightness" min="0" max="100">
+      </div>
+      <div class="field">
+        <label>Speed <b id="speedLabel"></b></label>
+        <input type="range" id="speed" min="1" max="100">
+      </div>
+      <div class="field">
+        <label>Direction</label>
+        <select id="direction">
+          <option value="0">Left &rarr; right</option>
+          <option value="1">Right &rarr; left</option>
+          <option value="2">Top &rarr; bottom</option>
+          <option value="3">Bottom &rarr; top</option>
+        </select>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap">
+        <button class="btn" id="fill">Paint all keys</button>
+        <button class="btn" id="clear">Clear painted keys</button>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const EFFECT_HINTS = {
+    static: 'One solid color (primary).',
+    rainbow: 'Rainbow wave across the keyboard.',
+    cycle: 'The whole keyboard slowly cycles through all colors.',
+    breathing: 'Primary color fading in and out.',
+    wave: 'Wave between the primary and secondary colors.',
+    gradient: 'Fixed gradient from the primary to the secondary color.',
+    reactive: 'Secondary color as background; keys flash the primary color when pressed.',
+    ripple: 'Secondary color as background; pressing a key sends a ripple in the primary color.',
+    custom: 'Only the keys you painted are lit.',
+    off: 'All lights off.'
+  };
+  const SWATCHES = ['#ff0000','#ff6a00','#ffd000','#3ddc84','#00e5ff','#2979ff','#7c5cff','#ff2fd0','#ffffff','#000000'];
+
+  let state = null, keysKey = '', scale = 1, minX = 0, minY = 0;
+  let painting = false, busy = false, pending = null, lastPost = 0;
+  const controlsBusy = new Set();
+
+  async function api(path, body) {
+    const res = await fetch(path, body === undefined ? {} : {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    return res.json();
+  }
+
+  // Send changes at most ~25 times per second, always keeping the latest value
+  function send(path, body) {
+    pending = { path, body };
+    if (busy) return;
+    const wait = Math.max(0, 40 - (Date.now() - lastPost));
+    busy = true;
+    setTimeout(async () => {
+      const job = pending; pending = null; lastPost = Date.now();
+      try { state = await api(job.path, job.body); render(false); } catch (e) {}
+      busy = false;
+      if (pending) send(pending.path, pending.body);
+    }, wait);
+  }
+
+  const settings = () => (state && state.settings) || {};
+
+  function buildBoard() {
+    const keys = state.keys || [];
+    const key = keys.map(k => k.loc + ':' + k.x + ',' + k.y).join('|');
+    if (key === keysKey) return;
+    keysKey = key;
+    const board = $('board');
+    board.innerHTML = '';
+    if (!keys.length) { board.style.width = '0'; board.style.height = '0'; return; }
+    minX = Math.min(...keys.map(k => k.x));
+    minY = Math.min(...keys.map(k => k.y));
+    const maxX = Math.max(...keys.map(k => k.x + k.w));
+    const maxY = Math.max(...keys.map(k => k.y + k.h));
+    const avail = Math.min(1100, $('board-wrap').clientWidth - 8);
+    scale = Math.max(0.5, Math.min(1.6, avail / (maxX - minX)));
+    board.style.width = ((maxX - minX) * scale) + 'px';
+    board.style.height = ((maxY - minY) * scale) + 'px';
+    for (const k of keys) {
+      const el = document.createElement('div');
+      el.className = 'key';
+      el.dataset.loc = k.loc;
+      el.title = k.name + '  (#' + k.loc + ')';
+      el.style.left = ((k.x - minX) * scale) + 'px';
+      el.style.top = ((k.y - minY) * scale) + 'px';
+      el.style.width = (k.w * scale - 3) + 'px';
+      el.style.height = (k.h * scale - 3) + 'px';
+      el.textContent = k.show || '';
+      board.appendChild(el);
+    }
+  }
+
+  function paintKey(el) {
+    if (!el || !el.dataset || el.dataset.loc === undefined) return;
+    const loc = el.dataset.loc;
+    if (el.dataset.last === settings().color1 && el.classList.contains('painted')) return;
+    el.dataset.last = settings().color1;
+    send('/api/paint', { keys: { ['#' + loc]: settings().color1 } });
+    // optimistic feedback
+    el.style.backgroundColor = settings().color1;
+    el.classList.add('painted');
+  }
+
+  function render(updateControls) {
+    if (!state) return;
+    const s = settings();
+    $('dot').classList.toggle('on', !!state.connected);
+    $('model').textContent = state.connected ? state.model : 'GK6X Lighting';
+    $('submodel').textContent = state.connected
+      ? 'firmware ' + state.firmware + (state.simulated ? ' \u00b7 simulated keyboard' : '')
+      : 'no keyboard connected \u2014 settings are saved and applied when one is';
+    $('stats').textContent = state.connected
+      ? state.fps + ' fps \u00b7 ' + state.framesSent + ' frames' + (state.framesFailed ? ' \u00b7 ' + state.framesFailed + ' failed' : '')
+        + (state.keyMonitor ? ' \u00b7 key monitor on' : '')
+      : '';
+    const warn = $('warn');
+    if (state.connected && state.framesSent === 0 && state.framesFailed > 3) {
+      warn.style.display = 'block';
+      warn.textContent = 'The keyboard is not answering lighting frames. Check the udev rule and the cable (see README).';
+    } else warn.style.display = 'none';
+
+    buildBoard();
+    const byLoc = {};
+    for (const k of state.keys || []) byLoc[k.loc] = k;
+    for (const el of $('board').children) {
+      const k = byLoc[el.dataset.loc];
+      if (!k) continue;
+      el.style.backgroundColor = k.color;
+      el.classList.toggle('painted', !!k.painted);
+      if (!k.painted) delete el.dataset.last;
+    }
+
+    // effects
+    const box = $('effects');
+    if (box.children.length !== state.effects.length) {
+      box.innerHTML = '';
+      for (const name of state.effects) {
+        const b = document.createElement('button');
+        b.textContent = name; b.dataset.name = name;
+        b.onclick = () => send('/api/settings', { effect: name });
+        box.appendChild(b);
+      }
+    }
+    for (const b of box.children) b.classList.toggle('active', b.dataset.name === s.effect);
+    $('effect-hint').textContent = EFFECT_HINTS[s.effect] || '';
+
+    if (updateControls !== false) {
+      setControl('color1', s.color1); setControl('color2', s.color2);
+      setControl('brightness', s.brightness); setControl('speed', s.speed); setControl('direction', s.direction);
+    }
+    $('c1label').textContent = s.color1; $('c2label').textContent = s.color2;
+    $('brightnessLabel').textContent = s.brightness + '%'; $('speedLabel').textContent = s.speed;
+  }
+
+  function setControl(id, value) {
+    if (controlsBusy.has(id)) return;
+    const el = $(id);
+    if (el.value != value) el.value = value;
+  }
+
+  function bindControl(id, field, parse) {
+    const el = $(id);
+    const handler = () => {
+      const v = parse ? parse(el.value) : el.value;
+      state.settings[field] = v;
+      $(id === 'color1' ? 'c1label' : id === 'color2' ? 'c2label' : 'x').textContent = v;
+      send('/api/settings', { [field]: v });
+    };
+    el.addEventListener('input', handler);
+    el.addEventListener('pointerdown', () => controlsBusy.add(id));
+    el.addEventListener('focus', () => controlsBusy.add(id));
+    const release = () => setTimeout(() => controlsBusy.delete(id), 400);
+    el.addEventListener('pointerup', release);
+    el.addEventListener('blur', release);
+    el.addEventListener('change', release);
+  }
+  bindControl('color1', 'color1');
+  bindControl('color2', 'color2');
+  bindControl('brightness', 'brightness', Number);
+  bindControl('speed', 'speed', Number);
+  bindControl('direction', 'direction', Number);
+
+  for (const c of SWATCHES) {
+    const el = document.createElement('div');
+    el.className = 'swatch'; el.style.background = c; el.title = c;
+    el.onclick = () => { $('color1').value = c; state.settings.color1 = c; send('/api/settings', { color1: c }); };
+    $('swatches').appendChild(el);
+  }
+
+  $('clear').onclick = () => send('/api/paint', { clear: true });
+  $('fill').onclick = () => {
+    const keys = {};
+    for (const k of state.keys || []) keys['#' + k.loc] = settings().color1;
+    send('/api/paint', { keys });
+  };
+
+  const board = $('board');
+  board.addEventListener('pointerdown', e => {
+    painting = true; board.setPointerCapture(e.pointerId);
+    paintKey(document.elementFromPoint(e.clientX, e.clientY));
+  });
+  board.addEventListener('pointermove', e => { if (painting) paintKey(document.elementFromPoint(e.clientX, e.clientY)); });
+  board.addEventListener('pointerup', () => { painting = false; });
+  board.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (el && el.dataset && el.dataset.loc !== undefined) send('/api/paint', { keys: { ['#' + el.dataset.loc]: 'off' } });
+  });
+
+  async function poll() {
+    if (!painting && !busy) {
+      try { state = await api('/api/state'); render(true); } catch (e) {
+        $('dot').classList.remove('on'); $('submodel').textContent = 'lighting service not reachable';
+      }
+    }
+    setTimeout(poll, 250);
+  }
+  window.addEventListener('resize', () => { keysKey = ''; if (state) render(false); });
+  poll();
+})();
+</script>
+</body>
+</html>

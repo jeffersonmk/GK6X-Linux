@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -19,6 +19,11 @@ namespace GK6X
 
         static void Main(string[] args)
         {
+            if (Cli.IsCommand(args))
+            {
+                Environment.Exit(Cli.Run(args));
+                return;
+            }
             bool isRunAsGUI = false;
             if (args.Length > 0) {
                 string flag = args[0].ToLower();
@@ -84,25 +89,93 @@ namespace GK6X
             Environment.Exit(0);// Ensure any loose threads die...
         }
 
-        static void Run(bool asGUI)
+        private static bool initialized;
+
+        /// <summary>
+        /// Resolves the data / user data / log folders and loads the static data files.
+        /// Layout on Linux (when installed): data next to the program, user files under ~/.config/gk6x,
+        /// logs under ~/.local/state/gk6x. Put a file called "portable.txt" next to the program to keep
+        /// everything in the program folder instead.
+        /// </summary>
+        internal static bool Initialize()
         {
+            if (initialized)
+            {
+                return true;
+            }
             BasePath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-            DataBasePath = Path.Combine(BasePath, DataBasePath);
-            UserDataPath = Path.Combine(BasePath, UserDataPath);
+            string dataOverride = Environment.GetEnvironmentVariable("GK6X_DATA");
+            DataBasePath = !string.IsNullOrEmpty(dataOverride) ? dataOverride : Path.Combine(BasePath, DataBasePath);
+            bool portable = File.Exists(Path.Combine(BasePath, "portable.txt")) ||
+                !(Environment.OSVersion.Platform == PlatformID.Unix);
+            if (portable)
+            {
+                UserDataPath = Path.Combine(BasePath, UserDataPath);
+                LogDirectory = BasePath;
+            }
+            else
+            {
+                string home = Environment.GetEnvironmentVariable("HOME") ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                string config = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+                if (string.IsNullOrEmpty(config)) config = Path.Combine(home, ".config");
+                string state = Environment.GetEnvironmentVariable("XDG_STATE_HOME");
+                if (string.IsNullOrEmpty(state)) state = Path.Combine(home, ".local", "state");
+                ConfigPath = Path.Combine(config, "gk6x");
+                UserDataPath = Path.Combine(ConfigPath, "UserData");
+                LogDirectory = Path.Combine(state, "gk6x");
+                try
+                {
+                    Directory.CreateDirectory(UserDataPath);
+                    Directory.CreateDirectory(LogDirectory);
+                    // First run: provide the sample configs next to the user's own files
+                    string sampleDir = Path.Combine(BasePath, "UserData");
+                    if (Directory.Exists(sampleDir))
+                    {
+                        foreach (string file in Directory.GetFiles(sampleDir))
+                        {
+                            string target = Path.Combine(UserDataPath, Path.GetFileName(file));
+                            if (!File.Exists(target) && Path.GetFileName(file).Contains("Sample"))
+                            {
+                                File.Copy(file, target);
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                }
+            }
+            if (ConfigPath == null)
+            {
+                ConfigPath = BasePath;
+            }
 
             if (!Localization.Load())
             {
                 LogFatalError("Failed to load localization data");
-                return;
+                return false;
             }
             if (!KeyValues.Load())
             {
                 LogFatalError("Failed to load the key data");
-                return;
+                return false;
             }
             if (!KeyboardState.Load())
             {
                 LogFatalError("Failed to load keyboard data");
+                return false;
+            }
+            initialized = true;
+            return true;
+        }
+
+        public static string ConfigPath;
+        public static string LogDirectory;
+
+        static void Run(bool asGUI)
+        {
+            if (!Initialize())
+            {
                 return;
             }
 
@@ -728,7 +801,14 @@ namespace GK6X
         {
             lock (logLocker)
             {
-                File.AppendAllText(Path.Combine(BasePath, "KbLog.txt"), "[" + DateTime.Now.TimeOfDay + "] " + str + Environment.NewLine);
+                try
+                {
+                    File.AppendAllText(Path.Combine(LogDirectory ?? BasePath ?? ".", "KbLog.txt"), "[" + DateTime.Now.TimeOfDay + "] " + str + Environment.NewLine);
+                }
+                catch
+                {
+                    // Never fail because the log can't be written (read only install folder, etc)
+                }
                 Console.WriteLine(str);
             }
         }
