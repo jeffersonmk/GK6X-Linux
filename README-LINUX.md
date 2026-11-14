@@ -35,7 +35,11 @@ Supported: the same keyboards as upstream (GK61, GK64, GK68, GK84, GK87, SK61, .
    gk6x list        # every line should end with open=yes
    gk6x probe       # lights all keys red for 5 seconds, then returns to normal
    ```
-   (`~/.local/bin` must be in your `PATH`; the installer tells you if it isn't.)
+   `~/.local/bin` must be in your `PATH` (the installer warns if it isn't):
+   - bash/zsh: add `export PATH="$HOME/.local/bin:$PATH"` to `~/.bashrc` / `~/.zshrc`
+   - fish: `fish_add_path ~/.local/bin`
+
+   Then open a new terminal.
 5. Start the service and open the control page:
    ```sh
    systemctl --user start gk6x      # or just: gk6x daemon
@@ -109,6 +113,9 @@ keyboard's `hidraw` nodes.
 Local control API (127.0.0.1 only, JSON): `GET /api/state`, `POST /api/settings`, `POST /api/paint`, `POST /api/shutdown`.
 
 ## Developing
+
+Test scripts in `linux/` (watch the keyboard while they run): `demo-test.sh` (colors, rainbow, reactive, ~50 s) and
+`probe-variants.sh` (checks which frame variant lights your keyboard).
 
 ```sh
 cd GK6X && dotnet build -c Release     # output in ../Build

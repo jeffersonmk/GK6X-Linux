@@ -1,3 +1,53 @@
+# GK6X for Linux (native)
+
+This fork runs natively on Linux (.NET 8, no mono, no `sudo`) and adds **realtime RGB lighting**: change colors and effects
+instantly from the command line or from a web page with a live keyboard preview. Tested on a SK61S RGB; key mapping,
+macros and the original commands still work.
+
+## Install
+
+1. Install the .NET SDK and git (Arch/CachyOS: `sudo pacman -S dotnet-sdk git`, Fedora: `sudo dnf install dotnet-sdk-8.0 git`, Ubuntu: `sudo apt install dotnet-sdk-8.0 git`).
+2. Get the code and run the installer as your normal user (it asks for your password once, only for the udev rule):
+   ```sh
+   git clone https://github.com/pixeltris/GK6X.git && cd GK6X && git checkout linux-native
+   ./linux/install.sh --autostart      # --autostart = start the lighting service at every login
+   ```
+3. Make sure `~/.local/bin` is in your `PATH` (fish: `fish_add_path ~/.local/bin`) and replug the keyboard if it isn't detected.
+4. Check it: `gk6x list` (every line should say `open=yes`), then `gk6x status`.
+
+## Use
+
+```sh
+gk6x color ff0000                  # solid color
+gk6x effect rainbow --speed 60     # static, rainbow, cycle, breathing, wave, gradient, reactive, ripple, custom, off
+gk6x key W 00ff00                  # paint one key ('off' removes it); gk6x clear removes all
+gk6x brightness 70
+gk6x ui                            # control page: http://127.0.0.1:6465
+gk6x stop                          # keyboard goes back to its normal layer
+```
+Key mapping and macros: run `gk6x` with no arguments (`map`, `unmap`, `findkeys`...); your files live in `~/.config/gk6x/UserData/`.
+
+## Update
+
+```sh
+cd GK6X && git pull && ./linux/install.sh --no-udev --autostart
+systemctl --user start gk6x
+```
+Your settings in `~/.config/gk6x` are kept.
+
+## Uninstall
+
+```sh
+./linux/uninstall.sh            # program, service, launcher, udev rule (keeps your settings)
+./linux/uninstall.sh --purge    # also deletes ~/.config/gk6x and logs
+```
+
+Full documentation, how it works and troubleshooting: [README-LINUX.md](README-LINUX.md).
+
+---
+
+# Original README (upstream, archived)
+
 Project archived on 2026-03-05. I've made a release updating the data files to V6.0.0.76 on this date but no GUI build due to issues. This release provides compatibility with keyboards such as GK68 but hasn't been tested thoroughly. If you're having issues try the GK6X-v1.21 release instead. It's recommended to use the official software which is linked below. This project is no longer maintained as I no longer use any GK6X based keyboards.
 
 # GK6X
