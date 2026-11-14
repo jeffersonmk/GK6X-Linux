@@ -14,6 +14,8 @@ Supported: the same keyboards as upstream (GK61, GK64, GK68, GK84, GK87, SK61, .
 
 *Control page (`gk6x ui`) on a SK61S RGB: the keys show the colors the keyboard is receiving in real time; click or drag to paint keys.*
 
+The page has a theme picker (top right): Midnight, Neon, Carbon, Aurora, Clean light, Material You and Classic; it is remembered by the browser, or use `?theme=aurora` in the URL.
+
 > **Status of realtime lighting:** the driver-layer protocol (`0x1A` frames) was reverse engineered by the upstream author but
 > never implemented in the open source tool. It is implemented here and **verified on a SK61S RGB** (colors, rainbow,
 > reactive effect and normal typing all work). Other models should behave the same; run `gk6x probe` to check yours.

@@ -8,24 +8,30 @@
   :root {
     --bg: #14151a; --panel: #1d1f27; --panel2: #262935; --line: #333747;
     --text: #e6e8ef; --muted: #8a90a6; --accent: #7c5cff; --ok: #3ddc84; --bad: #ff5c6c;
+    --on-accent: #fff; --r: 12px; --r2: 8px; --kr: 6px;
+    --font: system-ui, "Segoe UI", Roboto, sans-serif;
+    --card-bg: var(--panel); --card-shadow: none; --card-blur: none; --page-bg: var(--bg);
+    --h-transform: uppercase; --h-spacing: 1.2px; --title-weight: 600; --key-border: rgba(255,255,255,.14);
+    --key-text: rgba(255,255,255,.88);
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--bg); color: var(--text);
-    font: 14px/1.4 system-ui, "Segoe UI", Roboto, sans-serif; }
+  html, body { margin: 0; background: var(--page-bg); color: var(--text); min-height: 100vh;
+    font: 14px/1.4 var(--font); }
   header { display: flex; align-items: center; gap: 14px; padding: 14px 22px; border-bottom: 1px solid var(--line); }
-  header h1 { font-size: 17px; margin: 0; font-weight: 600; letter-spacing: .2px; }
+  header h1 { font-size: 17px; margin: 0; font-weight: var(--title-weight); letter-spacing: .2px; }
   .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); flex: none; }
   .dot.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
   .sub { color: var(--muted); font-size: 12.5px; }
   .spacer { flex: 1; }
   main { max-width: 1180px; margin: 0 auto; padding: 22px; display: grid; gap: 18px; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
-  .card h2 { margin: 0 0 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); font-weight: 600; }
+  .card { background: var(--card-bg); border: 1px solid var(--line); border-radius: var(--r); padding: 18px;
+    box-shadow: var(--card-shadow); backdrop-filter: var(--card-blur); -webkit-backdrop-filter: var(--card-blur); }
+  .card h2 { margin: 0 0 12px; font-size: 12px; text-transform: var(--h-transform); letter-spacing: var(--h-spacing); color: var(--muted); font-weight: 600; }
   #board-wrap { overflow-x: auto; padding: 6px 2px 2px; }
   #board { position: relative; margin: 0 auto; user-select: none; touch-action: none; }
-  .key { position: absolute; border-radius: 6px; border: 1px solid rgba(255,255,255,.14);
+  .key { position: absolute; border-radius: var(--kr); border: 1px solid var(--key-border);
     display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600;
-    color: rgba(255,255,255,.88); text-shadow: 0 1px 2px rgba(0,0,0,.8); cursor: crosshair; overflow: hidden;
+    color: var(--key-text); text-shadow: var(--key-shadow, 0 1px 2px rgba(0,0,0,.8)); cursor: crosshair; overflow: hidden;
     transition: background-color .08s linear; }
   .key.painted { outline: 2px solid #fff8; outline-offset: -3px; }
   .key:hover { border-color: #fff; }
@@ -36,19 +42,73 @@
   .field label b { color: var(--text); font-weight: 600; }
   .effects { display: flex; flex-wrap: wrap; gap: 8px; }
   .effects button, .btn { background: var(--panel2); color: var(--text); border: 1px solid var(--line);
-    border-radius: 8px; padding: 7px 13px; cursor: pointer; font: inherit; text-transform: capitalize; }
+    border-radius: var(--r2); padding: 7px 13px; cursor: pointer; font: inherit; text-transform: capitalize; }
   .effects button:hover, .btn:hover { border-color: var(--accent); }
-  .effects button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .effects button.active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
   input[type=range] { width: 100%; accent-color: var(--accent); }
-  input[type=color] { width: 100%; height: 38px; border: 1px solid var(--line); border-radius: 8px;
+  input[type=color] { width: 100%; height: 38px; border: 1px solid var(--line); border-radius: var(--r2);
     background: var(--panel2); padding: 3px; cursor: pointer; }
-  select { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px; font: inherit; }
+  select { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r2); padding: 8px; font: inherit; }
   .swatches { display: flex; flex-wrap: wrap; gap: 7px; }
-  .swatch { width: 26px; height: 26px; border-radius: 7px; border: 1px solid #fff3; cursor: pointer; }
+  .swatch { width: 26px; height: 26px; border-radius: var(--r2); border: 1px solid #fff3; cursor: pointer; }
   .swatch:hover { transform: scale(1.12); }
   .hint { color: var(--muted); font-size: 12.5px; margin-top: 10px; }
   .warn { background: #3a2a14; border: 1px solid #6b4a1a; color: #ffd493; padding: 10px 14px; border-radius: 10px; display: none; }
   .stats { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+  /* ---------------------------------------------------------------- themes */
+  .theme-pick { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r2);
+    padding: 6px 8px; font: inherit; font-size: 12.5px; }
+
+  /* Neon (Razer-style): black, acid green, sharp edges, glowing borders */
+  [data-theme=neon] { --bg:#050505; --panel:#0d0d0d; --panel2:#151515; --line:#1f3a1a; --text:#e8ffe4; --muted:#7c9a76;
+    --accent:#44d62c; --on-accent:#031a00; --r:2px; --r2:2px; --kr:2px; --ok:#44d62c; --h-spacing:2.4px;
+    --card-shadow: 0 0 0 1px #44d62c18, 0 0 24px #44d62c10; --font: "Rajdhani","Segoe UI",system-ui,sans-serif; --key-border:#44d62c55; }
+  [data-theme=neon] header { border-bottom: 1px solid #44d62c66; box-shadow: 0 6px 24px #44d62c14; }
+  [data-theme=neon] h1 { text-transform: uppercase; letter-spacing: 3px; }
+  [data-theme=neon] .effects button.active { box-shadow: 0 0 14px #44d62c88; }
+
+  /* Carbon (iCUE-style): graphite, amber accent, tidy rounded cards */
+  [data-theme=carbon] { --bg:#0e0f11; --panel:#17191c; --panel2:#202327; --line:#2b2f34; --text:#eceef0; --muted:#8f969d;
+    --accent:#ffc400; --on-accent:#1a1400; --r:10px; --r2:6px; --kr:5px; --h-transform:none; --h-spacing:.3px;
+    --card-bg: linear-gradient(180deg,#1b1d21,#15171a); --card-shadow: 0 8px 24px #0008; }
+  [data-theme=carbon] .card h2 { font-size: 14px; color: var(--text); }
+  [data-theme=carbon] input[type=range] { accent-color: #ffc400; }
+
+  /* Aurora (SignalRGB-style): deep gradient background, frosted glass cards */
+  [data-theme=aurora] { --bg:#0b0820; --panel:#ffffff10; --panel2:#ffffff14; --line:#ffffff24; --text:#f3f1ff; --muted:#a79fd0;
+    --accent:#b44cff; --r:18px; --r2:12px; --kr:8px; --h-transform:none; --h-spacing:.4px;
+    --page-bg: radial-gradient(1000px 600px at 15% -10%, #4b1fa8 0%, transparent 60%), radial-gradient(900px 600px at 100% 10%, #0aa5c8 0%, transparent 55%), #0b0820;
+    --card-bg: #ffffff0f; --card-blur: blur(18px) saturate(140%); --card-shadow: 0 10px 40px #0006; }
+  [data-theme=aurora] .effects button.active { background: linear-gradient(90deg,#b44cff,#19c3ff); border-color: transparent; }
+  [data-theme=aurora] header { border-bottom-color:#ffffff1c; }
+
+  /* Clean light (Wootility / Keychron Launcher style): white cards, soft shadows */
+  [data-theme=light] { --bg:#f1f3f7; --panel:#ffffff; --panel2:#f1f3f7; --line:#dfe3ea; --text:#1b2030; --muted:#6a7287;
+    --accent:#2f6bff; --r:14px; --r2:9px; --kr:7px; --h-transform:none; --h-spacing:0; --ok:#12a150; --bad:#e5384f;
+    --card-shadow: 0 1px 2px #1b203010, 0 8px 24px #1b20301a; --key-border:#00000026; --key-shadow: 0 1px 2px rgba(0,0,0,.45); }
+  [data-theme=light] .swatch { border-color: #0003; }
+  [data-theme=light] .card h2 { color: #1b2030; font-size: 14px; }
+  [data-theme=light] header { background:#fff; border-bottom-color:#dfe3ea; }
+  [data-theme=light] .warn { background:#fff5e0; color:#7a5200; }
+
+  /* Material You (Linux desktop / matugen style): tonal surfaces, pill buttons, big radii */
+  [data-theme=material] { --bg:#141218; --panel:#211f26; --panel2:#2b2930; --line:#36343b; --text:#e6e0e9; --muted:#cac4d0;
+    --accent:#d0bcff; --on-accent:#381e72; --r:28px; --r2:999px; --kr:12px; --h-transform:none; --h-spacing:.1px;
+    --font: "Google Sans","Roboto","Noto Sans",system-ui,sans-serif; --key-border:#ffffff22; }
+  [data-theme=material] header { border: 0; }
+  [data-theme=material] .card h2 { font-size: 15px; color: #e6e0e9; font-weight: 500; }
+  [data-theme=material] .card { border: 0; padding: 22px; }
+  [data-theme=material] select { padding: 8px 14px; }
+  [data-theme=material] .btn { background:#4a4458; border:0; padding: 9px 18px; }
+
+  /* Classic (OpenRGB / desktop-utility style): flat gray, dense, no decoration */
+  [data-theme=classic] { --bg:#2b2b2b; --panel:#353535; --panel2:#424242; --line:#505050; --text:#e8e8e8; --muted:#a8a8a8;
+    --accent:#3d8be6; --r:3px; --r2:3px; --kr:3px; --h-transform:none; --h-spacing:0; --ok:#5cb85c; --title-weight:500;
+    --font: "DejaVu Sans","Noto Sans",system-ui,sans-serif; --key-border:#00000066; }
+  [data-theme=classic] .card { padding: 12px; }
+  [data-theme=classic] main { gap: 10px; }
+  [data-theme=classic] .card h2 { font-size: 12.5px; color: var(--text); }
 </style>
 </head>
 <body>
@@ -60,6 +120,7 @@
   </div>
   <div class="spacer"></div>
   <div class="stats" id="stats"></div>
+  <select class="theme-pick" id="themePick" title="Theme"></select>
 </header>
 
 <main>
@@ -121,6 +182,17 @@
 <script>
 (() => {
   const $ = id => document.getElementById(id);
+
+  // ---- theme picker (remembered in this browser; ?theme=name also works)
+  const THEMES = [['midnight','Midnight (current)'],['neon','Neon'],['carbon','Carbon'],['aurora','Aurora'],['light','Clean light'],['material','Material You'],['classic','Classic']];
+  const setTheme = t => { document.documentElement.dataset.theme = t; try { localStorage.setItem('gk6x-theme', t); } catch (e) {} };
+  const pick = document.getElementById('themePick');
+  for (const [id, label] of THEMES) { const o = document.createElement('option'); o.value = id; o.textContent = label; pick.appendChild(o); }
+  const urlTheme = new URLSearchParams(location.search).get('theme');
+  let saved = null; try { saved = localStorage.getItem('gk6x-theme'); } catch (e) {}
+  const initial = THEMES.some(t => t[0] === (urlTheme || saved)) ? (urlTheme || saved) : 'midnight';
+  setTheme(initial); pick.value = initial;
+  pick.onchange = () => setTheme(pick.value);
   const EFFECT_HINTS = {
     static: 'One solid color (primary).',
     rainbow: 'Rainbow wave across the keyboard.',
@@ -228,6 +300,9 @@
       const k = byLoc[el.dataset.loc];
       if (!k) continue;
       el.style.backgroundColor = k.color;
+      // dark label on bright keys, light label on dark keys
+      const n = parseInt(k.color.slice(1), 16), lum = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+      el.style.color = lum > 0.62 ? '#111' : ''; el.style.textShadow = lum > 0.62 ? 'none' : '';
       el.classList.toggle('painted', !!k.painted);
       if (!k.painted) delete el.dataset.last;
     }

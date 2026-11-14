@@ -10,6 +10,8 @@ Fork of [pixeltris/GK6X](https://github.com/pixeltris/GK6X) (MIT license, archiv
 
 *Control page (`gk6x ui`) on a SK61S RGB: the keys show the colors the keyboard is receiving in real time; click or drag to paint keys.*
 
+The page has a theme picker (top right): Midnight, Neon, Carbon, Aurora, Clean light, Material You and Classic. Your choice is remembered by the browser (or open `http://127.0.0.1:6465/?theme=aurora`).
+
 ## Install
 
 1. Install the .NET SDK and git (Arch/CachyOS: `sudo pacman -S dotnet-sdk git`, Fedora: `sudo dnf install dotnet-sdk-8.0 git`, Ubuntu: `sudo apt install dotnet-sdk-8.0 git`).
