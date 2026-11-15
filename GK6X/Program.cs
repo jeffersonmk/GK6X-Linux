@@ -172,6 +172,28 @@ namespace GK6X
         public static string ConfigPath;
         public static string LogDirectory;
 
+        /// <summary>Lighting effects (.le) created by the user live in UserData/lighting.</summary>
+        public static string UserLightingPath
+        {
+            get { return Path.Combine(UserDataPath, "lighting"); }
+        }
+
+        /// <summary>Finds a lighting effect file by name (user files win over the bundled ones).</summary>
+        public static string FindLightingFile(string name)
+        {
+            if (string.IsNullOrEmpty(name) || name.IndexOfAny(new[] { '/', '\\' }) >= 0 || name.Contains(".."))
+            {
+                return null;
+            }
+            string user = Path.Combine(UserLightingPath, name + ".le");
+            if (File.Exists(user))
+            {
+                return user;
+            }
+            string bundled = Path.Combine(DataBasePath, "lighting", name + ".le");
+            return File.Exists(bundled) ? bundled : null;
+        }
+
         static void Run(bool asGUI)
         {
             if (!Initialize())

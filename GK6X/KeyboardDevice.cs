@@ -436,11 +436,18 @@ namespace GK6X
             }
         }
 
+        /// <summary>Number of packets the keyboard did not acknowledge (used to report "apply failed").</summary>
+        public int FailedPackets;
+
         public void WritePacketNoResponse(OpCodes op1, byte op2, Packet packet, byte op3 = 0)
         {
             using (Packet response = new Packet())
             using (Packet result = WritePacket(op1, op2, packet, op3))
             {
+                if (result == null)
+                {
+                    FailedPackets++;
+                }
             }
         }
 

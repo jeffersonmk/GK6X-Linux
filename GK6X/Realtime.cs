@@ -16,6 +16,8 @@ namespace GK6X
     public class LightingSettings
     {
         public string Effect = "rainbow";
+        /// <summary>Name of the .le lighting file played by the "le" effect</summary>
+        public string Le = string.Empty;
         /// <summary>1 - 100</summary>
         public int Speed = 50;
         /// <summary>0 - 100</summary>
@@ -143,13 +145,14 @@ namespace GK6X
     {
         public static readonly string[] EffectNames =
         {
-            "static", "rainbow", "cycle", "breathing", "wave", "gradient", "reactive", "ripple", "custom", "off"
+            "static", "rainbow", "cycle", "breathing", "wave", "gradient", "reactive", "ripple", "le", "custom", "off"
         };
 
         private class Led
         {
             public int Location;
             public string Name;
+            public string Id;
             public string Show;
             public int X;
             public int Y;
@@ -183,6 +186,8 @@ namespace GK6X
         private int forceSend;
 
         public int Fps = 30;
+        /// <summary>While true no frames are sent (used while the profile is being written to the keyboard).</summary>
+        public volatile bool Paused;
         public bool IsRunning { get; private set; }
         public double MeasuredFps { get; private set; }
         public long FramesSent { get; private set; }
@@ -210,6 +215,7 @@ namespace GK6X
                 Led led = new Led();
                 led.Location = key.LocationCode;
                 led.Name = key.KeyName;
+                led.Id = key.DriverValueName;
                 led.Show = key.Show;
                 led.X = key.Position.Left;
                 led.Y = key.Position.Top;
@@ -343,6 +349,8 @@ namespace GK6X
                 Dictionary<string, object> d = new Dictionary<string, object>();
                 d["loc"] = led.Location;
                 d["name"] = led.Name;
+                d["id"] = led.Id;
+                d["def"] = led.Id != null && led.Id.IndexOf('_') > 0 ? led.Id.Substring(0, led.Id.IndexOf('_')) : led.Id;
                 d["show"] = led.Show;
                 d["x"] = led.X;
                 d["y"] = led.Y;
@@ -421,6 +429,12 @@ namespace GK6X
                     bool changed = lastFrame == null || !frame.SequenceEqual(lastFrame);
                     bool keepAlive = clock.ElapsedMilliseconds - lastSendTicks > 1000;
                     bool force = Interlocked.Exchange(ref forceSend, 0) != 0;
+                    if (Paused)
+                    {
+                        lastFrame = null;
+                        Thread.Sleep(20);
+                        continue;
+                    }
                     if (changed || keepAlive || force)
                     {
                         bool ok;
@@ -509,6 +523,16 @@ namespace GK6X
             double rate = 0.05 + (s.Speed / 100.0) * 0.95;// cycles per second
             float brightness = s.Brightness / 100f;
 
+            float[] leColors = null;
+            if (s.Effect == "le")
+            {
+                LePlayer player = GetLePlayer(s.Le);
+                if (player != null)
+                {
+                    leColors = player.Render(t, s.Speed);
+                }
+            }
+
             List<Press> activePresses = null;
             if (s.Effect == "reactive" || s.Effect == "ripple")
             {
@@ -591,6 +615,14 @@ namespace GK6X
                             }
                         }
                         break;
+                    case "le":
+                        if (leColors != null)
+                        {
+                            r = leColors[led.Location * 3];
+                            g = leColors[led.Location * 3 + 1];
+                            b = leColors[led.Location * 3 + 2];
+                        }
+                        break;
                     case "custom":
                     case "off":
                     default:
@@ -613,6 +645,33 @@ namespace GK6X
             return frame;
         }
 
+        private readonly Dictionary<string, LePlayer> lePlayers = new Dictionary<string, LePlayer>();
+
+        private LePlayer GetLePlayer(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                return null;
+            }
+            lock (lePlayers)
+            {
+                LePlayer player;
+                if (!lePlayers.TryGetValue(name, out player))
+                {
+                    UserDataFile.LightingEffect effect = new UserDataFile.LightingEffect(new UserDataFile(), name);
+                    player = effect.Load(state) ? new LePlayer(effect) : null;
+                    lePlayers[name] = player;
+                }
+                return player;
+            }
+        }
+
+        /// <summary>True when the named .le file can be loaded for this keyboard.</summary>
+        public bool CanPlay(string name)
+        {
+            return GetLePlayer(name) != null;
+        }
+
         private static byte ToByte(float v)
         {
             if (v <= 0) return 0;
@@ -630,6 +689,7 @@ namespace GK6X
         {
             Dictionary<string, object> d = new Dictionary<string, object>();
             d["effect"] = s.Effect;
+            d["le"] = s.Le;
             d["speed"] = s.Speed;
             d["brightness"] = s.Brightness;
             d["color1"] = Colors.ToHex(s.Color1);
@@ -665,6 +725,7 @@ namespace GK6X
             {
                 s.Effect = str.ToLowerInvariant();
             }
+            if (Json.TryGetValue(d, "le", out str)) s.Le = str.Length > 100 ? str.Substring(0, 100) : str;
             if (TryGetNumber(d, "speed", out dbl)) s.Speed = (int)dbl;
             if (TryGetNumber(d, "brightness", out dbl)) s.Brightness = (int)dbl;
             if (TryGetNumber(d, "direction", out dbl)) s.Direction = (int)dbl;
@@ -697,6 +758,123 @@ namespace GK6X
             if (o is double) { value = (double)o; return true; }
             if (o is string) { return double.TryParse((string)o, NumberStyles.Float, CultureInfo.InvariantCulture, out value); }
             return false;
+        }
+    }
+}
+
+namespace GK6X
+{
+    /// <summary>
+    /// Software player for the official .le lighting files, used to preview them on the keyboard picture and to play them
+    /// through the realtime driver layer. The firmware's exact timing is not documented, so this is an approximation:
+    /// one "tick" is 1/20 s at speed 50.
+    /// </summary>
+    public class LePlayer
+    {
+        private readonly UserDataFile.LightingEffect effect;
+        private readonly int totalTicks;
+        private readonly List<int> frameStart = new List<int>();
+        private readonly Dictionary<int, UserDataFile.LightingEffect.Param> paramByKey = new Dictionary<int, UserDataFile.LightingEffect.Param>();
+        private readonly float[] buffer = new float[KeyboardDevice.RealtimeLedCount * 3];
+
+        public LePlayer(UserDataFile.LightingEffect effect)
+        {
+            this.effect = effect;
+            int tick = 0;
+            foreach (UserDataFile.LightingEffect.Frame frame in effect.Frames)
+            {
+                frameStart.Add(tick);
+                tick += Math.Max(1, frame.Count);
+            }
+            totalTicks = Math.Max(1, tick);
+            foreach (UserDataFile.LightingEffect.Param p in effect.Params)
+            {
+                foreach (int key in p.Keys)
+                {
+                    if (!paramByKey.ContainsKey(key)) paramByKey[key] = p;
+                }
+            }
+        }
+
+        private static void Unpack(uint packed, out float r, out float g, out float b)
+        {
+            r = (packed & 0xFF) / 255f;
+            g = ((packed >> 8) & 0xFF) / 255f;
+            b = ((packed >> 16) & 0xFF) / 255f;
+        }
+
+        private static double StartHue(uint packed)
+        {
+            float r, g, b;
+            Unpack(packed, out r, out g, out b);
+            float max = Math.Max(r, Math.Max(g, b)), min = Math.Min(r, Math.Min(g, b)), d = max - min;
+            if (d <= 0) return 0;
+            double h;
+            if (max == r) h = ((g - b) / d) % 6;
+            else if (max == g) h = (b - r) / d + 2;
+            else h = (r - g) / d + 4;
+            h /= 6;
+            return h < 0 ? h + 1 : h;
+        }
+
+        public float[] Render(double seconds, int speed)
+        {
+            Array.Clear(buffer, 0, buffer.Length);
+            if (effect.Type == LightingEffectType.Static)
+            {
+                foreach (KeyValuePair<int, uint> kv in effect.KeyColors)
+                {
+                    if (kv.Key >= 0 && kv.Key < KeyboardDevice.RealtimeLedCount)
+                    {
+                        Unpack(kv.Value, out buffer[kv.Key * 3], out buffer[kv.Key * 3 + 1], out buffer[kv.Key * 3 + 2]);
+                    }
+                }
+                return buffer;
+            }
+            if (effect.Frames.Count == 0)
+            {
+                return buffer;
+            }
+            double ticks = seconds * 20.0 * (Math.Max(1, speed) / 50.0);
+            int tick = (int)(ticks % totalTicks);
+            int index = 0;
+            for (int i = 0; i < frameStart.Count; i++)
+            {
+                if (frameStart[i] <= tick) index = i;
+            }
+            foreach (int key in effect.Frames[index].KeyCodes)
+            {
+                if (key < 0 || key >= KeyboardDevice.RealtimeLedCount) continue;
+                float r = 1, g = 1, b = 1;
+                UserDataFile.LightingEffect.Param p;
+                if (paramByKey.TryGetValue(key, out p))
+                {
+                    bool hasColor = (p.Color & 0xFFFFFF) != 0;
+                    switch (p.ColorType)
+                    {
+                        case LightingEffectColorType.RGB:
+                            // The param color is where on the color wheel this group of keys starts
+                            Colors.Hsv((float)(StartHue(p.Color) + ticks / Math.Max(1, p.Val1)), 1, 1, out r, out g, out b);
+                            break;
+                        case LightingEffectColorType.Breathing:
+                            {
+                                if (hasColor) Unpack(p.Color, out r, out g, out b);
+                                else Colors.Hsv((float)(ticks / 90.0), 1, 1, out r, out g, out b);
+                                double period = Math.Max(4, p.Val1 + p.Val2);
+                                float k = (float)((Math.Sin(2 * Math.PI * ticks / period - Math.PI / 2) + 1) / 2);
+                                r *= k; g *= k; b *= k;
+                            }
+                            break;
+                        default:
+                            Unpack(p.Color, out r, out g, out b);
+                            break;
+                    }
+                }
+                buffer[key * 3] = r;
+                buffer[key * 3 + 1] = g;
+                buffer[key * 3 + 2] = b;
+            }
+            return buffer;
         }
     }
 }

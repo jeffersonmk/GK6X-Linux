@@ -20,6 +20,42 @@ The page has a theme picker (top right): Midnight, Neon, Carbon, Aurora, Clean l
 > never implemented in the open source tool. It is implemented here and **verified on a SK61S RGB** (colors, rainbow,
 > reactive effect and normal typing all work). Other models should behave the same; run `gk6x probe` to check yours.
 
+## Control page
+
+`gk6x ui` opens the control page (also in the app menu). Four tabs, modelled on the official software's screens:
+
+**Lighting** - realtime effects, per-key painting, colors, speed, brightness (this is the live preview of what the keyboard receives).
+
+**Configurations** - remap keys per layer (Layer 1-3, each with its Fn layer). Pick a key, then choose a function from the
+palette (Primary, Number Pad, Media, System/Net, Mouse, Disable, Layers, Lighting, Macros) or build a combination such as
+Ctrl+Shift+A (Win/Mac naming toggle). **Save** writes `~/.config/gk6x/UserData/MODELID.txt`, **Apply** writes the layer to the
+keyboard. **Import / Export** exchange that file. The standard layer is protected (the official software doesn't allow
+remapping it either); only its lighting can be set.
+
+![Configurations tab](docs/config.png)
+
+**LE Files** - the 300+ lighting effects shipped with the official software, searchable. **View** plays one on your keyboard
+in realtime (software approximation of the firmware animation), **Add to layer** + **Apply** stores it in the keyboard
+(up to 32 on the standard layer, one on the other layers). Paint keys on the preview and **Save** them as your own static LE file.
+
+![LE Files tab](docs/le.png)
+
+**Macros** - create macros with categories and search. **Record** captures the keys you press in the page (with timing), or add
+actions by hand (Press / Down / Up + delay). Repeat modes: N times, until the key is released, or until it is pressed again.
+Assign a macro to a key in Configurations -> Macros, then Apply.
+
+![Macros tab](docs/macros.png)
+
+The page speaks English and Portuguese (selector in the header) and has seven themes.
+
+Extra key functions available in the palette (all firmware features): next lighting effect / reactive effect, brightness and
+speed up/down, lighting pause, lighting on/off, lock the Windows key, hold-to-switch layer, layer buttons. Firmware shortcuts
+you can use without any software (from the Epomaker / Skyloong SK61-GK61 manuals): Fn+Backspace backlight on/off, Fn+P / Fn+[
+brightness -/+, Fn+] next mode, Fn+Q/W/E/R driver layer / layer 1 / 2 / 3.
+
+Files: profile `~/.config/gk6x/UserData/MODELID.txt` (original GK6X text format, a `.bak` copy is kept on save), your own
+lighting files `~/.config/gk6x/UserData/lighting/*.le`, realtime settings `~/.config/gk6x/realtime.json`.
+
 ## Install (step by step)
 
 1. Install the .NET SDK and git:

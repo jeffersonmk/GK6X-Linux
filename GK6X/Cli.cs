@@ -256,6 +256,39 @@ Other (original) commands: run 'gk6x' without arguments for the interactive prom
                 LightingSettings round = LightingSettingsFile.FromJson(LightingSettingsFile.ToJson(st));
                 Check("settings survive a json round trip", round.Color1 == st.Color1 && round.Paint.Count == 1 && round.Paint[loc] == 0xFF0000);
             }
+            Console.WriteLine("Profile / lighting files");
+            {
+                KeyboardState sk61 = KeyboardState.GetKeyboardState(656801885);
+                string sample = Path.Combine(Program.BasePath, "UserData", "Sample.txt");
+                ProfileModel m = ProfileModel.Parse(File.Exists(sample) ? File.ReadAllText(sample) : string.Empty);
+                Check("Sample.txt parses (layers, macros, lighting)", m.Layers.ContainsKey("FnLayer3") && m.Macros.Count == 2 && m.Lighting.ContainsKey("Base"));
+                ProfileModel again = ProfileModel.Parse(m.Serialize());
+                Check("profile text round trip is stable", again.Serialize() == m.Serialize());
+                ProfileModel viaJson = ProfileModel.FromJson((Dictionary<string, object>)Json.Deserialize(Json.Serialize(m.ToJson())));
+                Check("profile json round trip is stable", viaJson.Serialize() == m.Serialize());
+                ProfileModel bad = ProfileModel.Parse("[Layer1]\nQ:NotAKey\nNoSuchKey:A\n");
+                List<string> errors = bad.Validate(sk61);
+                Check("validation rejects unknown keys and values", errors.Count == 2);
+                ProfileModel good = ProfileModel.Parse("[Macro(m1,0,RepeatXTimes,2)]\nPress:A+B\n[Layer1]\nQ:LCtrl+A\nW:Macro(m1)\nE:NextLightingEffect\n");
+                Check("valid profile passes validation", good.Validate(sk61).Count == 0);
+                Check("English key names load", Localization.GetValue("key_esc") == "ESC" && Localization.GetValue("key_disable") == "Disabled");
+                Check("palette has the official groups", ConfigService.BuildKeyset().Count >= 8);
+                List<object> files = ConfigService.ListLightingFiles();
+                Check("lighting library lists the bundled .le files", files.Count > 100);
+                LightingEngine engine = new LightingEngine(sk61, new NullFrameSink());
+                bool played = engine.CanPlay("Windmill 61") || engine.CanPlay("Windmill");
+                Check("a dynamic .le file loads and renders", played);
+                LightingSettings le = new LightingSettings { Effect = "le", Le = engine.CanPlay("Windmill 61") ? "Windmill 61" : "Windmill" };
+                int lit = 0;
+                for (double t = 0; t < 6; t += 0.1)
+                {
+                    byte[] f = engine.Render(le, t);
+                    for (int i = 0; i < f.Length; i += 4) if (f[i] + f[i + 1] + f[i + 2] > 0) lit++;
+                }
+                Check("the dynamic effect lights keys over time", lit > 0);
+                LightingSettings st = new LightingSettings { Effect = "le", Le = "WASD static" };
+                Check("a static .le file plays", engine.CanPlay("WASD static") && engine.Render(st, 0).Where((v, i) => i % 4 < 3).Any(v => v > 0));
+            }
             Console.WriteLine(selfTestFailures == 0 ? "All checks passed." : selfTestFailures + " check(s) FAILED.");
             return selfTestFailures == 0 ? 0 : 1;
         }

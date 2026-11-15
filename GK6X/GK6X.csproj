@@ -31,6 +31,7 @@
     <Compile Include="CMFile.cs" />
     <Compile Include="CommandLogger.cs" />
     <Compile Include="Cli.cs" />
+    <Compile Include="Config.cs" />
     <Compile Include="Crc16.cs" />
     <Compile Include="Daemon.cs" />
     <Compile Include="Enums.cs" />

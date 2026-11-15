@@ -404,6 +404,53 @@ namespace GK6X
             return table;
         }
 
+        /// <summary>
+        /// Writes the saved profile to the keyboard (key maps, macros, lighting of the given layers) and goes back to the
+        /// driver layer so realtime lighting keeps working. Returns an error message or null on success.
+        /// </summary>
+        public string ApplyProfile(IEnumerable<KeyboardLayer> layers, out int failedPackets)
+        {
+            failedPackets = 0;
+            LightingEngine e;
+            KeyboardDevice d;
+            lock (locker)
+            {
+                e = engine;
+                d = device;
+            }
+            if (e == null)
+            {
+                return "No keyboard connected.";
+            }
+            if (d == null)
+            {
+                return "Simulated keyboard: nothing was written.";
+            }
+            e.Paused = true;
+            try
+            {
+                string error;
+                int failed = ConfigService.Apply(d, layers, out error);
+                if (error != null)
+                {
+                    return error;
+                }
+                failedPackets = failed;
+                // The keyboard reloads the layer data when the layer changes
+                d.SetLayer(KeyboardLayer.Base);
+                d.SetLayer(KeyboardLayer.Driver);
+                if (DriverKeys == DriverKeysMode.Default)
+                {
+                    d.SetDriverKeyTable(BuildDefaultDriverKeyTable(d.State));
+                }
+                return failed > 0 ? "The keyboard did not acknowledge " + failed + " packet(s)." : null;
+            }
+            finally
+            {
+                e.Paused = false;
+            }
+        }
+
         public void RequestShutdown()
         {
             shutdown.Set();
@@ -526,10 +573,30 @@ namespace GK6X
                     Respond(ctx, 200, "application/json", Json.Serialize(BuildState()));
                     return;
                 }
+                if (path == "/favicon.ico")
+                {
+                    ctx.Response.StatusCode = 204;
+                    ctx.Response.Close();
+                    return;
+                }
+                if (HandleConfig(ctx, path))
+                {
+                    return;
+                }
                 if (ctx.Request.HttpMethod == "POST" && path == "/api/settings")
                 {
                     Dictionary<string, object> body = ReadBody(ctx);
                     LightingEngine e = daemon.Engine;
+                    string leName;
+                    if (e != null && Json.TryGetValue(body, "effect", out leName) && leName == "le")
+                    {
+                        string requested;
+                        if (!Json.TryGetValue(body, "le", out requested)) requested = daemon.Settings.Le;
+                        if (!e.CanPlay(requested))
+                        {
+                            throw new FormatException("Lighting file '" + requested + "' can't be loaded for this keyboard");
+                        }
+                    }
                     daemon.Update(s => LightingSettingsFile.Apply(s, body));
                     Respond(ctx, 200, "application/json", Json.Serialize(BuildState()));
                     return;
@@ -558,6 +625,162 @@ namespace GK6X
                 Program.Log("Control server error: " + e);
                 Respond(ctx, 500, "application/json", Json.Serialize(new Dictionary<string, object> { { "error", e.Message } }));
             }
+        }
+
+        private static string Json400(string message)
+        {
+            return Json.Serialize(new Dictionary<string, object> { { "error", message } });
+        }
+
+        /// <summary>Profile / palette / lighting-file endpoints. Returns true when the request was handled.</summary>
+        private bool HandleConfig(HttpListenerContext ctx, string path)
+        {
+            string method = ctx.Request.HttpMethod;
+            if (!path.StartsWith("/api/keyset") && !path.StartsWith("/api/usage") && !path.StartsWith("/api/profile") &&
+                !path.StartsWith("/api/apply") && !path.StartsWith("/api/le"))
+            {
+                return false;
+            }
+            LightingEngine engine = daemon.Engine;
+            KeyboardState keyboard = engine != null ? engine.State : null;
+
+            if (method == "GET" && path == "/api/keyset")
+            {
+                Respond(ctx, 200, "application/json", Json.Serialize(ConfigService.BuildKeyset()));
+                return true;
+            }
+            if (method == "GET" && path == "/api/usage")
+            {
+                Respond(ctx, 200, "application/json", Json.Serialize(ConfigService.BuildUsageNames()));
+                return true;
+            }
+            if (method == "GET" && path == "/api/le")
+            {
+                Dictionary<string, object> d = new Dictionary<string, object>();
+                d["items"] = ConfigService.ListLightingFiles();
+                Respond(ctx, 200, "application/json", Json.Serialize(d));
+                return true;
+            }
+            if (keyboard == null)
+            {
+                Respond(ctx, 409, "application/json", Json400("No keyboard connected."));
+                return true;
+            }
+
+            if (method == "GET" && path == "/api/profile")
+            {
+                Dictionary<string, object> d = new Dictionary<string, object>();
+                d["path"] = ConfigService.ProfilePath(keyboard);
+                d["exists"] = File.Exists(ConfigService.ProfilePath(keyboard));
+                d["profile"] = ConfigService.LoadProfile(keyboard).ToJson();
+                Respond(ctx, 200, "application/json", Json.Serialize(d));
+                return true;
+            }
+            if (method == "POST" && path == "/api/profile")
+            {
+                ProfileModel model = ProfileModel.FromJson(ReadBody(ctx));
+                List<string> errors = model.Validate(keyboard);
+                if (errors.Count > 0)
+                {
+                    Respond(ctx, 400, "application/json", Json400(string.Join("; ", errors.Take(5))));
+                    return true;
+                }
+                ConfigService.SaveProfile(keyboard, model);
+                Respond(ctx, 200, "application/json", "{\"ok\":true}");
+                return true;
+            }
+            if (method == "GET" && path == "/api/profile/export")
+            {
+                string file = ConfigService.ProfilePath(keyboard);
+                ctx.Response.Headers["Content-Disposition"] = "attachment; filename=\"gk6x-" + keyboard.ModelId + ".txt\"";
+                Respond(ctx, 200, "text/plain; charset=utf-8", File.Exists(file) ? File.ReadAllText(file) : string.Empty);
+                return true;
+            }
+            if (method == "POST" && path == "/api/profile/import")
+            {
+                string text;
+                if (!Json.TryGetValue(ReadBody(ctx), "text", out text))
+                {
+                    throw new FormatException("Missing 'text'");
+                }
+                ProfileModel model = ProfileModel.Parse(text);
+                List<string> errors = model.Validate(keyboard);
+                if (errors.Count > 0)
+                {
+                    Respond(ctx, 400, "application/json", Json400("Import rejected: " + string.Join("; ", errors.Take(5))));
+                    return true;
+                }
+                ConfigService.SaveProfile(keyboard, model);
+                Dictionary<string, object> d = new Dictionary<string, object>();
+                d["profile"] = model.ToJson();
+                Respond(ctx, 200, "application/json", Json.Serialize(d));
+                return true;
+            }
+            if (method == "POST" && path == "/api/apply")
+            {
+                Dictionary<string, object> body = ReadBody(ctx);
+                List<object> names;
+                List<KeyboardLayer> layers = new List<KeyboardLayer>();
+                if (Json.TryGetValue(body, "layers", out names))
+                {
+                    foreach (string n in names.OfType<string>())
+                    {
+                        KeyboardLayer layer;
+                        if (Enum.TryParse(n, true, out layer) && layer != KeyboardLayer.Driver) layers.Add(layer);
+                    }
+                }
+                if (layers.Count == 0)
+                {
+                    throw new FormatException("No layers selected");
+                }
+                int failed;
+                string error = daemon.ApplyProfile(layers, out failed);
+                Dictionary<string, object> d = new Dictionary<string, object>();
+                d["ok"] = error == null;
+                d["failed"] = failed;
+                if (error != null) d["error"] = error;
+                Respond(ctx, error == null ? 200 : 500, "application/json", Json.Serialize(d));
+                return true;
+            }
+            if (method == "POST" && path == "/api/le/save")
+            {
+                Dictionary<string, object> body = ReadBody(ctx);
+                string name;
+                if (!Json.TryGetValue(body, "name", out name))
+                {
+                    throw new FormatException("Missing 'name'");
+                }
+                Dictionary<int, uint> colors = new Dictionary<int, uint>();
+                Dictionary<string, object> given;
+                if (Json.TryGetValue(body, "colors", out given))
+                {
+                    foreach (KeyValuePair<string, object> kv in given)
+                    {
+                        int loc;
+                        if (int.TryParse(kv.Key, out loc) && kv.Value is string) colors[loc] = Colors.Parse((string)kv.Value);
+                    }
+                }
+                else
+                {
+                    colors = new Dictionary<int, uint>(daemon.Settings.Paint);
+                }
+                if (colors.Count == 0)
+                {
+                    throw new FormatException("No colored keys to save");
+                }
+                ConfigService.SaveStaticLighting(keyboard, name.Trim(), colors);
+                Respond(ctx, 200, "application/json", Json.Serialize(new Dictionary<string, object> { { "ok", true }, { "name", name.Trim() } }));
+                return true;
+            }
+            if (method == "POST" && path == "/api/le/delete")
+            {
+                string name;
+                Json.TryGetValue(ReadBody(ctx), "name", out name);
+                bool ok = ConfigService.DeleteUserLighting(name);
+                Respond(ctx, ok ? 200 : 404, "application/json", ok ? "{\"ok\":true}" : Json400("Only your own lighting files can be deleted"));
+                return true;
+            }
+            return false;
         }
 
         private void ApplyPaint(Dictionary<string, object> body)
