@@ -178,7 +178,8 @@ Other (original) commands: run 'gk6x' without arguments for the interactive prom
             Program.Log("Shutting down...");
             server.Stop();
             daemon.Stop();
-            return 0;
+            // Non-zero so that systemd (Restart=on-failure) starts a fresh process
+            return daemon.RestartRequested ? 75 : 0;
         }
 
         // ------------------------------------------------------------------ self test

@@ -186,6 +186,11 @@ namespace GK6X
         private Timer saveTimer;
         private bool settingsDirty;
         private readonly ManualResetEvent shutdown = new ManualResetEvent(false);
+        private Timer watchdogTimer;
+        private int missingTicks;
+
+        /// <summary>Set when the daemon asked to be restarted (see Watchdog); the process exits with a failure code.</summary>
+        public bool RestartRequested { get; private set; }
 
         public DriverKeysMode DriverKeys = DriverKeysMode.Default;
         public bool UseKeyMonitor = true;
@@ -298,6 +303,92 @@ namespace GK6X
             KeyboardDeviceManager.Connected += OnConnected;
             KeyboardDeviceManager.Disconnected += OnDisconnected;
             KeyboardDeviceManager.StartListener();
+            watchdogTimer = new Timer(Watchdog, null, 2000, 2000);
+        }
+
+        /// <summary>
+        /// True when the kernel exposes a GK6X keyboard (USB id 1ea7:0907) as a hidraw device.
+        /// Looked up straight in sysfs so it doesn't depend on HidSharp's hotplug thread.
+        /// </summary>
+        private static bool KeyboardPresentInSysfs()
+        {
+            try
+            {
+                const string root = "/sys/class/hidraw";
+                if (!Directory.Exists(root))
+                {
+                    return false;
+                }
+                foreach (string dir in Directory.GetDirectories(root))
+                {
+                    string uevent = Path.Combine(dir, "device", "uevent");
+                    if (!File.Exists(uevent))
+                    {
+                        continue;
+                    }
+                    foreach (string line in File.ReadAllLines(uevent))
+                    {
+                        if (line.StartsWith("HID_ID=", StringComparison.Ordinal) &&
+                            line.EndsWith(":00001EA7:00000907", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// HidSharp's hotplug thread can wedge on Linux (spins at 100% CPU and never reports devices again), so after
+        /// unplugging and replugging the keyboard it was never picked up. Every 2s: if the keyboard is there but not
+        /// attached, rescan by hand; if that doesn't help for ~20s, restart the daemon (systemd brings it back).
+        /// </summary>
+        private void Watchdog(object state)
+        {
+            if (shutdown.WaitOne(0))
+            {
+                return;
+            }
+            lock (locker)
+            {
+                if (device != null && !device.IsClosed)
+                {
+                    missingTicks = 0;
+                    return;
+                }
+            }
+            if (!KeyboardPresentInSysfs())
+            {
+                missingTicks = 0;
+                return;
+            }
+            try
+            {
+                KeyboardDeviceManager.RefreshConnectedDevices();
+            }
+            catch (Exception e)
+            {
+                Program.Log("Realtime: rescan failed: " + e.Message);
+            }
+            Thread.Sleep(1000);
+            lock (locker)
+            {
+                if (device != null && !device.IsClosed)
+                {
+                    missingTicks = 0;
+                    return;
+                }
+            }
+            if (++missingTicks >= 10)
+            {
+                Program.Log("Realtime: keyboard is plugged in but wasn't picked up, restarting the daemon");
+                RestartRequested = true;
+                shutdown.Set();
+            }
         }
 
         private void AttachEngine(KeyboardState keyboardState, IFrameSink sink)
@@ -382,6 +473,12 @@ namespace GK6X
             {
                 try { d.SetLayer(KeyboardLayer.Base); } catch { }
             }
+            else if (d != null && !restoreLayer)
+            {
+                // Drop the stale handle: the device manager keeps it registered (and ignores the keyboard when it
+                // comes back) until it's closed
+                try { d.Close(); } catch { }
+            }
         }
 
         /// <summary>
@@ -463,6 +560,7 @@ namespace GK6X
 
         public void Stop()
         {
+            if (watchdogTimer != null) watchdogTimer.Dispose();
             KeyboardDeviceManager.Connected -= OnConnected;
             KeyboardDeviceManager.Disconnected -= OnDisconnected;
             settingsDirty = true;
