@@ -225,7 +225,7 @@ namespace GK6X
         public void SetMacros(KeyboardLayer layer, UserDataFile userData)
         {
             WritePacketNoResponse(OpCodes.LayerResetDataType, (byte)layer, null, (byte)KeyboardLayerDataType.Macros);
-            // The following check has been disabled so that the WebGUI can assign macros without having to setup the keys
+            // The following check has been disabled so that macros can be assigned without having to setup the keys
             /*if (userData.GetNumMacros(layer) == 0)
             {
                 return;

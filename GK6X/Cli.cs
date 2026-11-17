@@ -14,7 +14,7 @@ namespace GK6X
 {
     /// <summary>
     /// Command line front end for the Linux friendly features (realtime lighting daemon + client commands).
-    /// The original interactive prompt (map / unmap / gui / ...) is untouched and still starts when no command is given.
+    /// The original interactive prompt (map / unmap / ...) is untouched and still starts when no command is given.
     /// </summary>
     public static class Cli
     {
@@ -114,7 +114,7 @@ Diagnostics:
   gk6x probe [--color ff0000] [--seconds 5] [--driver-keys default|none]
                                         enter the driver layer, light all keys, go back
 
-Other (original) commands: run 'gk6x' without arguments for the interactive prompt (map, unmap, gui, ...).");
+Other (original) commands: run 'gk6x' without arguments for the interactive prompt (map, unmap, ...).");
         }
 
         // ------------------------------------------------------------------ daemon

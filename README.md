@@ -166,15 +166,6 @@ You can reprogram the base layer, layers 1-3, and layers 1-3 whilst the fn is he
 
 Resets the keyboard to the default config. The dedicated reset keyboard key combo will be more effective; refer to your manual.
 
-### `gui`
-
-Starts the GUI web server on http://localhost:6464 (requires the GUI build from the [releases](https://github.com/pixeltris/GK6X/releases) page).
-
-*If you're running from source you'll need to copy the `driver` folder from a release build. For updating the GUI files see [updating.txt](/Build/Data/Updating.txt).*
-
-### `gui_le`
-
-Copies the lighting files created using the `gui` to the `Data/lighting/` folder so that the `map` command can use them.
 
 ## Additional commmands
 
@@ -195,16 +186,9 @@ This is used to update the data files from the official software. This exact pro
 ## Additional info
 
 - The `/p` command line arg can be used to set a prefixed file name of the config to use. For example `GK6X.exe /p test` will use `test - 655491200.txt` as the target config file (where the keyboard model id is `655491200`).
-- The following commands can be used as command line args to just execute a specific command `/gui`, `/map`, `/unmap`, `/dumpkeys`. For example: `GK6X.exe /map`
-- The data files for the `gui` command aren't included in this repo. Obtain them from a release build.
+- The following commands can be used as command line args to just execute a specific command `/map`, `/unmap`, `/dumpkeys`. For example: `GK6X.exe /map`
 - There's possibly some issue with certain USB slots [(#102)](https://github.com/pixeltris/GK6X/issues/102).
 - There is no "apply failed" message like there is on the official software, so `map` / `umap` can fail silently.
-- There are issues with the web GUI such as not being able to map the base layer. I'd recommend avoiding the GUI if possible.
-
-The web GUI looks like this:
-
-![Alt text](https://raw.githubusercontent.com/pixeltris/GK6X/master/ScreenshotWeb.png)
-
 ## Related projects
 
 - https://github.com/wgwoods/gk64-python - thanks to [@wgwoods](https://github.com/wgwoods) for his work on annotating the dissasembly of the GK64 firmware.
